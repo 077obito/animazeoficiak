@@ -1,49 +1,37 @@
 const express = require('express');
-const cors = require('cors'); // Para permitir requisições de diferentes origens
+const cors = require('cors');
+const cheerio = require('cheerio'); // Instale com: npm install cheerio
+const axios = require('axios');
 
 const app = express();
 app.use(cors());
 
-// Dados mockados (substitua por dados reais do seu banco de dados)
-const animes = [
-    {
-        nome: 'Attack on Titan',
-        capa: 'https://via.placeholder.com/200x300', // URL da capa do anime
-        banner: 'https://via.placeholder.com/600x200', // URL do banner do anime
-        id_tmdb: 13060, // ID do anime no TMDb
-        sobre: 'Em um mundo onde a humanidade vive dentro de muralhas para se proteger de titãs gigantes, Eren Yeager jura vingança contra as criaturas que destruíram sua vida.',
-        link: 'https://www.attackontitan.tv/'
-    },
-    {
-        nome: 'Demon Slayer: Kimetsu no Yaiba',
-        capa: 'https://via.placeholder.com/200x300', // URL da capa do anime
-        banner: 'https://via.placeholder.com/600x200', // URL do banner do anime
-        id_tmdb: 79160, // ID do anime no TMDb
-        sobre: 'Tanjiro Kamado, um jovem que vende carvão, se torna um caçador de demônios após sua família ser assassinada e sua irmã transformada em um demônio.',
-        link: 'https://kimetsu.com/'
-    },
-    // Adicione mais animes aqui...
-];
+app.get('/animes', async (req, res) => {
+  try {
+    const url = 'https://www.animefire.plus/lancamentos/todos'; 
 
-// Rota para obter todos os animes
-app.get('/animes', (req, res) => {
+    const response = await axios.get(url);
+    const html = response.data;
+
+    const $ = cheerio.load(html); 
+
+    const animes = [];
+    $('div.divArticleLancamentos').each((index, element) => {
+      const link = $(element).find('a').attr('href');
+      const capa = $(element).find('img').attr('data-src');
+      const titulo = $(element).find('h3.animeTitle').text().trim(); 
+
+      animes.push({ titulo, link, capa });
+    });
+
     res.json(animes);
+  } catch (error) {
+    console.error('Erro ao obter episódios:', error);
+    res.status(500).json({ message: 'Erro ao obter os episódios.' });
+  }
 });
 
-// Rota para obter um anime específico pelo ID
-app.get('/animes/:id', (req, res) => {
-    const animeId = req.params.id;
-    const anime = animes.find(a => a.id_tmdb === parseInt(animeId)); // Convertendo o ID para inteiro
-
-    if (anime) {
-        res.json(anime);
-    } else {
-        res.status(404).json({ message: 'Anime não encontrado.' });
-    }
-});
-
-// Iniciar o servidor
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-    console.log(`Servidor API de Animes rodando na porta ${port}`);
+  console.log(`Servidor API de Animes rodando na porta ${port}`);
 });
